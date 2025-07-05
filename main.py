@@ -77,7 +77,7 @@ async def main():
         print("  stop_server        Stop Ghost Turnstile Server (kill -9)")
         print("  help, -h, --help   Show this help message")
         print("\n  OPTIONS:")
-        print("  --browser=TYPE        Browser: 'chrome' (default) or 'firefox'")
+        print("  --browser=TYPE        Browser: 'chrome' (default) or 'firefox (Not supported on macOS)'")
         print("  --extract-sitekey     Extract sitekey and exit (for local server testing)")
         print("  --headless            Force headless mode (no browser window)")
         print("\n URL FORMATS:")

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ghost Turnstile Server</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a0e27;
+            color: #e0e6ed;
+            margin: 40px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #786df1;
+        }
+        .endpoint {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .method {
+            color: #a5b3ff;
+            font-weight: bold;
+        }
+        code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        a {
+            color: #786df1;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .status {
+            background: rgba(16,185,129,0.2);
+            color: #10b981;
+            padding: 10px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1> Ghost Turnstile Server</h1>
+        <p>Local CAPTCHA solving server for Cloudflare Turnstile challenges</p>
+        
+        <div class="status"> Server Active on port 8888</div>
+        
+        <h2>API Endpoints</h2>
+        
+        <div class="endpoint">
+            <span class="method">GET</span> <code>/solve?sitekey={key}&amp;url={url}</code>
+            <p>Create a solving session and display the Turnstile widget</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method">GET</span> <code>/status?session={id}</code>
+            <p>Check the status of a solving session</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method">GET</span> <code>/test</code>
+            <p>Test page with demo Turnstile widget</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method">POST</span> <code>/token</code>
+            <p>Internal endpoint for token submission</p>
+        </div>
+        
+        <h2>Quick Start</h2>
+        <div class="endpoint">
+            <p>Example URLs:</p>
+            <code>http://localhost:8888/solve?sitekey=1x00000000000000000000AA&amp;url=https://example.com</code>
+            <p style="margin-top: 10px;">Note: Use one of these demo sitekeys for testing:</p>
+            <ul style="margin: 10px 0;">
+                <li><code>1x00000000000000000000AA</code> - Always passes (visible widget)</li>
+                <li><code>2x00000000000000000000AB</code> - Always blocks</li>
+                <li><code>3x00000000000000000000FF</code> - Always passes (invisible)</li>
+            </ul>
+            <p style="margin-top: 10px;">
+                <a href="/test">Try the demo widget </a>
+            </p>
+        </div>
+        
+        <p style="margin-top: 40px; color: #8b949e;"> 2025 Navina Inc. All rights reserved.</p>
+    </div>
+</body>
+</html>

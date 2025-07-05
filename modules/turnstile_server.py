@@ -417,8 +417,8 @@ class TurnstileRequestHandler(BaseHTTPRequestHandler):
             import os
             from pathlib import Path
             
-            # Try to serve the server_index_simple.html file
-            index_path = Path(__file__).parent.parent / 'server_index_simple.html'
+            # Try to serve the server_index_simple.html file from templates directory
+            index_path = Path(__file__).parent.parent / 'templates' / 'server_index_simple.html'
             
             if index_path.exists():
                 try:

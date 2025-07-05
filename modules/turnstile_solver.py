@@ -304,7 +304,7 @@ async def extract_turnstile_data(page):
     This replaces the previous regex-only approach with a more robust solution.
     """
     
-    print("🔍 Starting Turnstile data extraction...")
+    print(" Starting Turnstile data extraction...")
     
     try:
         # Try YARA-based detection first (preferred method)
@@ -315,31 +315,31 @@ async def extract_turnstile_data(page):
             
             # If YARA found something, use it
             if result.get('found'):
-                print(f"  ✅ YARA detection successful: {len(result.get('sitekeys', []))} sitekeys found")
+                print(f"   YARA detection successful: {len(result.get('sitekeys', []))} sitekeys found")
                 return result
             else:
-                print("  ⚠️  YARA detection found no Turnstile patterns")
+                print("    YARA detection found no Turnstile patterns")
         else:
-            print("  ⚠️  YARA rules not available, skipping YARA detection")
+            print("    YARA rules not available, skipping YARA detection")
         
         # Fall back to regex-based detection
         print("  Using regex-based detection (fallback method)")
         result = await extract_turnstile_data_regex(page)
         
         if result.get('found'):
-            print(f"  ✅ Regex detection successful: {len(result.get('sitekeys', []))} sitekeys found")
+            print(f"   Regex detection successful: {len(result.get('sitekeys', []))} sitekeys found")
         else:
-            print("  ❌ No Turnstile patterns found by either method")
+            print("   No Turnstile patterns found by either method")
         
         return result
         
     except Exception as e:
-        print(f"  ❌ Error during Turnstile extraction: {e}")
+        print(f"   Error during Turnstile extraction: {e}")
         # Final fallback to regex if everything else fails
         try:
             return await extract_turnstile_data_regex(page)
         except Exception as regex_error:
-            print(f"  ❌ Regex fallback also failed: {regex_error}")
+            print(f"   Regex fallback also failed: {regex_error}")
             return {
                 'found': False,
                 'elements': [],

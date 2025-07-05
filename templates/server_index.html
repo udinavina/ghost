@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost Browser Helper Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e27;
+            color: #e0e6ed;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(120, 109, 241, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(109, 168, 241, 0.1) 0%, transparent 50%);
+            z-index: -1;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo svg {
+            height: 32px;
+            width: auto;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #786df1 0%, #6da8f1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 3rem 0;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #786df1 0%, #6da8f1 50%, #f16dcb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #a5b3c9;
+        }
+
+        /* Status Card */
+        .status-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .status-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .sessions-count {
+            color: #a5b3c9;
+        }
+
+        /* Endpoints Grid */
+        .endpoints-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .endpoint-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .endpoint-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(120, 109, 241, 0.5);
+        }
+
+        .endpoint-method {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: rgba(120, 109, 241, 0.2);
+            color: #a5b3ff;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .endpoint-path {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 1rem;
+            color: #e0e6ed;
+            margin-bottom: 0.5rem;
+            word-break: break-all;
+        }
+
+        .endpoint-description {
+            color: #a5b3c9;
+            font-size: 0.95rem;
+        }
+
+        /* Code Example */
+        .code-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .code-section h2 {
+            margin-bottom: 1rem;
+            color: #e0e6ed;
+        }
+
+        .code-block {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #e6edf3;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #786df1 0%, #6da8f1 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(120, 109, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #e0e6ed;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(120, 109, 241, 0.5);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 4rem;
+            padding: 2rem 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #8b949e;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .endpoints-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo-section">
+                <div class="logo">
+                    <svg width="134" height="32" viewBox="0 0 134 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1.18139 23.7381C1.12888 23.6826 1.06555 23.6384 0.995299 23.6083C0.925049 23.5782 0.849369 23.5628 0.772939 23.5631C0.6955 23.5618 0.61858 23.5759 0.546662 23.6047C0.474744 23.6334 0.40927 23.6762 0.354054 23.7305C0.298838 23.7848 0.254989 23.8496 0.22506 23.921C0.195131 23.9924 0.179717 24.0691 0.179728 24.1466C0.178816 24.2226 0.193438 24.2981 0.222701 24.3683C0.251963 24.4386 0.295253 24.5021 0.349914 24.555L4.94974 29.1645C5.0621 29.2729 5.21183 29.3338 5.3679 29.3347C5.48226 29.3356 5.59418 29.3017 5.68882 29.2375C5.76469 29.1903 5.82869 29.1262 5.8759 29.0504C5.92311 28.9745 5.95227 28.8888 5.96111 28.7999C5.97012 28.7154 5.95994 28.63 5.93131 28.55C5.90268 28.47 5.85636 28.3975 5.79579 28.3379L1.18139 23.7381Z" fill="#786df1"/>
+                        <path d="M27.3705 1.02444e-05C26.1311 -0.00258039 24.9413 0.486271 24.0618 1.35943C23.1822 2.23259 22.6847 3.41884 22.6783 4.65818V15.8417L22.3428 15.5013C22.2358 15.3992 11.9081 4.91588 8.378 1.55597C7.41679 0.606354 6.12599 0.0646047 4.77497 0.0437699C3.73198 0.0400385 2.72054 0.401262 1.91588 1.06487C1.42052 1.46259 1.01401 1.95972 0.722558 2.52419C0.431109 3.08866 0.261204 3.70795 0.22378 4.34212C0.188 5.00902 0.289989 5.67615 0.523391 6.3019C0.756793 6.92766 1.1166 7.49861 1.58038 7.97918C4.42488 10.9404 8.81561 15.2728 13.0653 19.4496C17.0768 23.3978 21.2196 27.4822 23.8841 30.2441C24.3421 30.7196 24.8911 31.0981 25.4984 31.3571C26.1057 31.616 26.7589 31.7501 27.4191 31.7514C28.5132 31.7528 29.5725 31.3669 30.4095 30.6622C31.344 29.876 31.9296 28.7521 32.0384 27.5357C32.0574 27.3743 32.0672 27.212 32.0675 27.0495V4.68248C32.0611 3.4423 31.5629 2.25532 30.6824 1.38202C29.8018 0.508724 28.6107 0.020436 27.3705 0.0243162" fill="#786df1"/>
+                    </svg>
+                </div>
+                <span class="logo-text">Ghost Browser Helper Server, By Udi Shamir</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Hero -->
+            <div class="hero">
+                <h1>Local CAPTCHA Solving Server</h1>
+                <p class="subtitle">Clean environment for Cloudflare Turnstile challenges</p>
+            </div>
+
+            <!-- Status Card -->
+            <div class="status-card">
+                <div class="status-header">
+                    <div class="status-indicator"></div>
+                    <span class="status-text">Server Active</span>
+                </div>
+                <p class="sessions-count">Active Sessions: <span id="sessionCount">0</span></p>
+            </div>
+
+            <!-- Endpoints -->
+            <h2 style="margin-bottom: 1.5rem;">API Endpoints</h2>
+            <div class="endpoints-grid">
+                <div class="endpoint-card">
+                    <span class="endpoint-method">GET</span>
+                    <div class="endpoint-path">/solve?sitekey={key}&url={url}</div>
+                    <p class="endpoint-description">Create a solving session and display the Turnstile widget</p>
+                </div>
+
+                <div class="endpoint-card">
+                    <span class="endpoint-method">GET</span>
+                    <div class="endpoint-path">/status?session={id}</div>
+                    <p class="endpoint-description">Check the status of a solving session</p>
+                </div>
+
+                <div class="endpoint-card">
+                    <span class="endpoint-method">GET</span>
+                    <div class="endpoint-path">/test</div>
+                    <p class="endpoint-description">Test page with demo Turnstile widget</p>
+                </div>
+
+                <div class="endpoint-card">
+                    <span class="endpoint-method">POST</span>
+                    <div class="endpoint-path">/token</div>
+                    <p class="endpoint-description">Internal endpoint for token submission</p>
+                </div>
+            </div>
+
+            <!-- Code Example -->
+            <div class="code-section">
+                <h2>Quick Example</h2>
+                <div class="code-block">// Example solving URL
+http://localhost:8888/solve?sitekey=0x4AAAAAAA&url=https://example.com
+
+// Check session status
+http://localhost:8888/status?session=uuid-here
+
+// Test with demo widget
+http://localhost:8888/test</div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <a href="/test" class="btn btn-primary">
+                    <span>Try Demo Widget</span>
+                    <span></span>
+                </a>
+                <a href="https://github.com/navina/ghost" class="btn btn-secondary">
+                    <span>View Documentation</span>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>(c) 2025 Navina Inc. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Update session count periodically
+        function updateSessionCount() {
+            // This would normally fetch from /api/sessions or similar
+            const count = document.getElementById('sessionCount');
+            // For now, just show a placeholder
+            count.textContent = '0';
+        }
+        
+        updateSessionCount();
+        setInterval(updateSessionCount, 5000);
+    </script>
+</body>
+</html>

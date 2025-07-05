@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from playwright.async_api import async_playwright, TimeoutError, Error
 from playwright_stealth import Stealth
+from .enhanced_stealth import EnhancedStealth
 
 class SessionLogger:
     """Enhanced session logger for debugging browser interactions"""
@@ -53,7 +54,7 @@ class SessionLogger:
 class BaseBrowser:
     """Base browser class using Playwright with stealth capabilities"""
     
-    def __init__(self, headless=False, browser_type='chrome'):
+    def __init__(self, headless=False, browser_type='chrome', use_profile=False):
         self.playwright = None
         self.browser = None
         self.context = None
@@ -61,6 +62,8 @@ class BaseBrowser:
         self.headless = headless
         self.browser_type = browser_type
         self.session_logger = None
+        self.use_profile = use_profile
+        self.profile_path = None
         
     async def launch_browser(self):
         """Launch browser with stealth configuration"""
@@ -78,126 +81,91 @@ class BaseBrowser:
                 )
             else:
                 print("Launching Chrome/Chromium browser...")
-                self.browser = await self.playwright.chromium.launch(
-                    headless=self.headless,
-                    channel='chromium' if self.browser_type == 'chrome' else None,
-                    args=[
-                        '--disable-blink-features=AutomationControlled',
-                        '--no-first-run',
-                        '--no-default-browser-check',
-                        '--disable-background-timer-throttling',
-                        '--disable-backgrounding-occluded-windows',
-                        '--disable-renderer-backgrounding',
-                        '--disable-dev-shm-usage',
+                
+                # Handle profile loading vs regular browser launch
+                if self.use_profile:
+                    self.profile_path = EnhancedStealth.get_crawler_profile_path()
+                    # Create the profile if it doesn't exist
+                    EnhancedStealth.create_realistic_profile(self.profile_path)
+                    print(f"Using internal crawler profile: {self.profile_path}")
+                    
+                    # Use launch_persistent_context for profile-based browsing
+                    chrome_args = EnhancedStealth.get_enhanced_chrome_args()
+                    # Remove user-data-dir from args since we pass it separately
+                    chrome_args = [arg for arg in chrome_args if not arg.startswith('--user-data-dir')]
+                    chrome_args.extend([
                         '--window-size=1920,1080',
                         '--start-maximized',
-                        '--disable-features=IsolateOrigins,site-per-process',
-                        '--flag-switches-begin',
-                        '--flag-switches-end',
-                        '--disable-site-isolation-trials',
-                        '--exclude-switches=enable-automation',
-                        '--disable-extensions-file-access-check',
-                        '--disable-extensions-http-throttling',
-                        '--disable-component-extensions-with-background-pages',
-                        '--disable-default-apps',
-                        '--disable-sync',
-                        '--no-service-autorun',
-                        '--password-store=basic',
-                        '--use-mock-keychain',
-                        '--no-sandbox',
-                        '--disable-gpu-sandbox',
-                        '--disable-software-rasterizer',
-                        '--disable-background-networking',
-                        '--disable-client-side-phishing-detection',
-                        '--disable-component-update',
-                        '--disable-domain-reliability',
-                        '--disable-features=VizDisplayCompositor'
-                    ]
+                    ])
+                    
+                    user_agent = EnhancedStealth.get_random_user_agent(self.browser_type)
+                    viewport = EnhancedStealth.get_realistic_viewport()
+                    screen = EnhancedStealth.get_realistic_screen()
+                    extra_headers = EnhancedStealth.get_enhanced_headers(self.browser_type)
+                    
+                    self.context = await self.playwright.chromium.launch_persistent_context(
+                        user_data_dir=self.profile_path,
+                        headless=self.headless,
+                        channel='chromium' if self.browser_type == 'chrome' else None,
+                        args=chrome_args,
+                        user_agent=user_agent,
+                        viewport=viewport,
+                        screen=screen,
+                        device_scale_factor=1,
+                        has_touch=False,
+                        is_mobile=False,
+                        java_script_enabled=True,
+                        timezone_id='America/Los_Angeles',
+                        locale='en-US',
+                        geolocation=None,
+                        permissions=[],
+                        extra_http_headers=extra_headers
+                    )
+                    
+                    # For persistent context, the browser is not directly accessible
+                    self.browser = None
+                    
+                else:
+                    # Regular browser launch without profile
+                    chrome_args = EnhancedStealth.get_enhanced_chrome_args()
+                    chrome_args.extend([
+                        '--window-size=1920,1080',
+                        '--start-maximized',
+                    ])
+                    
+                    self.browser = await self.playwright.chromium.launch(
+                        headless=self.headless,
+                        channel='chromium' if self.browser_type == 'chrome' else None,
+                        args=chrome_args
+                    )
+            
+            # Create context with stealth configuration using EnhancedStealth
+            if not self.use_profile:
+                # Only create context if not using profile (profile already creates persistent context)
+                user_agent = EnhancedStealth.get_random_user_agent(self.browser_type)
+                viewport = EnhancedStealth.get_realistic_viewport()
+                screen = EnhancedStealth.get_realistic_screen()
+                
+                # Get enhanced headers from EnhancedStealth
+                extra_headers = EnhancedStealth.get_enhanced_headers(self.browser_type)
+                
+                self.context = await self.browser.new_context(
+                    user_agent=user_agent,
+                    viewport=viewport,
+                    screen=screen,
+                    device_scale_factor=1,
+                    has_touch=False,
+                    is_mobile=False,
+                    java_script_enabled=True,
+                    timezone_id='America/Los_Angeles',
+                    locale='en-US',
+                    geolocation=None,
+                    permissions=[],
+                    extra_http_headers=extra_headers
                 )
             
-            # Create context with stealth configuration
-            user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-            if self.browser_type == 'firefox':
-                user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0'
-            
-            self.context = await self.browser.new_context(
-                user_agent=user_agent,
-                viewport={'width': 1920, 'height': 1080},
-                screen={'width': 1920, 'height': 1080},
-                device_scale_factor=1,
-                has_touch=False,
-                is_mobile=False,
-                java_script_enabled=True,
-                timezone_id='America/Los_Angeles',
-                locale='en-US',
-                geolocation=None,
-                permissions=[],
-                extra_http_headers={
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                    'Sec-Ch-Ua': '"Chromium";v="131", "Google Chrome";v="131", "Not_A Brand";v="24"',
-                    'Sec-Ch-Ua-Mobile': '?0',
-                    'Sec-Ch-Ua-Platform': '"Windows"',
-                    'Cache-Control': 'max-age=0'
-                }
-            )
-            
-            # Add aggressive webdriver removal at context level
-            await self.context.add_init_script("""
-                // Advanced webdriver removal - run before anything else
-                (() => {
-                    'use strict';
-                    
-                    // Delete webdriver property immediately
-                    delete navigator.webdriver;
-                    delete Object.getPrototypeOf(navigator).webdriver;
-                    
-                    // Override property descriptors to hide webdriver completely
-                    const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
-                    Object.getOwnPropertyDescriptor = function(obj, prop) {
-                        if (prop === 'webdriver') {
-                            return undefined;
-                        }
-                        return originalGetOwnPropertyDescriptor.apply(this, arguments);
-                    };
-                    
-                    const originalGetOwnPropertyNames = Object.getOwnPropertyNames;
-                    Object.getOwnPropertyNames = function(obj) {
-                        const names = originalGetOwnPropertyNames.apply(this, arguments);
-                        return names.filter(name => name !== 'webdriver');
-                    };
-                    
-                    const originalKeys = Object.keys;
-                    Object.keys = function(obj) {
-                        const keys = originalKeys.apply(this, arguments);
-                        return keys.filter(key => key !== 'webdriver');
-                    };
-                    
-                    // Override hasOwnProperty to hide webdriver
-                    const originalHasOwnProperty = Object.prototype.hasOwnProperty;
-                    Object.prototype.hasOwnProperty = function(prop) {
-                        if (prop === 'webdriver') {
-                            return false;
-                        }
-                        return originalHasOwnProperty.apply(this, arguments);
-                    };
-                    
-                    // Make webdriver always undefined with a non-configurable property
-                    Object.defineProperty(navigator, 'webdriver', {
-                        get: () => undefined,
-                        set: () => {},
-                        enumerable: false,
-                        configurable: false
-                    });
-                })();
-            """)
+            # Add comprehensive stealth JavaScript from EnhancedStealth at context level
+            await self.context.add_init_script(EnhancedStealth.get_stealth_js())
             
             # Create new page
             self.page = await self.context.new_page()
@@ -206,49 +174,9 @@ class BaseBrowser:
             stealth_instance = Stealth()
             await stealth_instance.apply_stealth_async(self.page)
             
-            # Add page-level webdriver removal and additional stealth
-            await self.page.add_init_script("""
-                (() => {
-                    'use strict';
-                    
-                    // Final webdriver cleanup
-                    delete navigator.webdriver;
-                    delete Object.getPrototypeOf(navigator).webdriver;
-                    
-                    // Ensure webdriver property is completely hidden
-                    Object.defineProperty(navigator, 'webdriver', {
-                        get: () => undefined,
-                        set: () => {},
-                        enumerable: false,
-                        configurable: false
-                    });
-                    
-                    // Remove automation-related properties
-                    const automationProps = [
-                        '__webdriver_evaluate', '__selenium_evaluate', '__webdriver_script_function',
-                        '__webdriver_script_func', '__webdriver_script_fn', '__fxdriver_evaluate',
-                        '__driver_unwrapped', '__webdriver_unwrapped', '__driver_evaluate',
-                        '__selenium_unwrapped', '__fxdriver_unwrapped', '_phantom', 'phantom',
-                        'callPhantom', '_Selenium_IDE_Recorder', '__nightmare',
-                        '__playwright__', '__pw_manual', '__playwright_target__'
-                    ];
-                    
-                    automationProps.forEach(prop => {
-                        try {
-                            delete window[prop];
-                            delete document[prop];
-                            delete navigator[prop];
-                        } catch (e) {}
-                    });
-                    
-                    // Remove CDP runtime detection
-                    try {
-                        delete window.chrome?._CDP;
-                        delete window.document?.$cdc_asdjflasutopfhvcZLmcfl_;
-                        delete window.$chrome_asyncScriptInfo;
-                    } catch (e) {}
-                })();
-            """)            
+            # Add enhanced page-level stealth measures
+            await self.page.add_init_script(EnhancedStealth.get_webgl_vendor_override())
+            await self.page.add_init_script(EnhancedStealth.get_battery_api_override())
             
             # Setup additional stealth measures
             await self._setup_stealth()
@@ -263,197 +191,10 @@ class BaseBrowser:
             raise
     
     async def _setup_stealth(self):
-        """Setup stealth measures to avoid detection"""
-        
-        # Enhanced stealth measures for Playwright
-        stealth_js = """
-            // Enhanced stealth measures for Playwright
-            
-            // Remove webdriver indicators more thoroughly
-            delete navigator.webdriver;
-            delete Object.getPrototypeOf(navigator).webdriver;
-            
-            // Override the getter to always return undefined
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined,
-                set: () => {},
-                enumerable: false,
-                configurable: false
-            });
-            
-            // Remove all automation properties
-            const propsToDelete = [
-                '__webdriver_evaluate', '__selenium_evaluate', '__webdriver_script_function',
-                '__webdriver_script_func', '__webdriver_script_fn', '__fxdriver_evaluate', 
-                '__driver_unwrapped', '__webdriver_unwrapped', '__driver_evaluate', 
-                '__selenium_unwrapped', '__fxdriver_unwrapped', '_phantom', 'phantom',
-                'callPhantom', '_Selenium_IDE_Recorder', '__nightmare', '__puppeteer_evaluation_script__',
-                '__playwright__', '__pw_manual', '__playwright_target__', '__playwrightTestConfig__'
-            ];
-            
-            propsToDelete.forEach(prop => {
-                delete window[prop];
-                delete document[prop];
-                delete navigator[prop];
-            });
-            
-            // Remove Playwright detection patterns
-            delete window.__playwright;
-            delete window.__pw_manual;
-            delete window.__playwright_target__;
-            delete window.Buffer;
-            delete window.process;
-            
-            // Override permissions API to avoid detection
-            const originalQuery = navigator.permissions?.query;
-            if (originalQuery) {
-                navigator.permissions.query = function(parameters) {
-                    return parameters.name === 'notifications' ?
-                        Promise.resolve({ state: Notification.permission || 'denied' }) :
-                        originalQuery.apply(this, arguments);
-                };
-            }
-            
-            // Override navigator properties to look more human
-            Object.defineProperty(navigator, 'languages', {
-                get: () => ['en-US', 'en'],
-                configurable: true,
-                enumerable: true
-            });
-            
-            Object.defineProperty(navigator, 'hardwareConcurrency', {
-                get: () => 8,
-                configurable: true,
-                enumerable: true
-            });
-            
-            Object.defineProperty(navigator, 'deviceMemory', {
-                get: () => 8,
-                configurable: true,
-                enumerable: true
-            });
-            
-            // Create realistic plugins array
-            const mockPlugins = {
-                0: {
-                    name: 'PDF Viewer',
-                    filename: 'internal-pdf-viewer',
-                    description: 'Portable Document Format',
-                    version: '1.0.0.0'
-                },
-                1: {
-                    name: 'Chrome PDF Viewer',
-                    filename: 'internal-pdf-viewer',
-                    description: 'Portable Document Format',
-                    version: '1.0.0.0'
-                },
-                2: {
-                    name: 'Chromium PDF Viewer',
-                    filename: 'internal-pdf-viewer', 
-                    description: 'Portable Document Format',
-                    version: '1.0.0.0'
-                },
-                3: {
-                    name: 'Microsoft Edge PDF Viewer',
-                    filename: 'internal-pdf-viewer',
-                    description: 'Portable Document Format',
-                    version: '1.0.0.0'
-                },
-                4: {
-                    name: 'WebKit built-in PDF',
-                    filename: 'internal-pdf-viewer',
-                    description: 'Portable Document Format',
-                    version: '1.0.0.0'
-                },
-                length: 5,
-                item: function(index) { return this[index] || null; },
-                namedItem: function(name) {
-                    for (let i = 0; i < this.length; i++) {
-                        if (this[i] && this[i].name === name) return this[i];
-                    }
-                    return null;
-                },
-                refresh: function() { return undefined; }
-            };
-            
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => mockPlugins,
-                configurable: true,
-                enumerable: true
-            });
-            
-            // Create realistic mimeTypes
-            const mockMimeTypes = {
-                0: {
-                    type: 'application/pdf',
-                    suffixes: 'pdf',
-                    description: 'Portable Document Format',
-                    enabledPlugin: mockPlugins[0]
-                },
-                length: 1,
-                item: function(index) { return this[index] || null; },
-                namedItem: function(name) {
-                    for (let i = 0; i < this.length; i++) {
-                        if (this[i] && this[i].type === name) return this[i];
-                    }
-                    return null;
-                }
-            };
-            
-            Object.defineProperty(navigator, 'mimeTypes', {
-                get: () => mockMimeTypes,
-                configurable: true,
-                enumerable: true
-            });
-        """
-        
-        # Add Firefox-specific stealth measures
-        if self.browser_type == 'firefox':
-            firefox_stealth_js = """
-                // Firefox-specific stealth measures
-                
-                // Remove Firefox automation indicators
-                const firefoxProps = [
-                    '_firefox', '__firefox__', 'domAutomation',
-                    'domAutomationController', '__fxdriver_evaluate',
-                    '__fxdriver_unwrapped', '_Selenium_IDE_Recorder'
-                ];
-                
-                firefoxProps.forEach(prop => {
-                    delete window[prop];
-                    delete document[prop];
-                    delete navigator[prop];
-                });
-                
-                // Remove Chrome object for Firefox
-                delete window.chrome;
-                Object.defineProperty(window, 'chrome', {
-                    get: () => undefined,
-                    set: () => {},
-                    enumerable: false,
-                    configurable: false
-                });
-                
-                // Override Firefox-specific properties
-                Object.defineProperty(navigator, 'oscpu', {
-                    get: () => 'Windows NT 10.0; Win64; x64'
-                });
-                
-                Object.defineProperty(navigator, 'productSub', {
-                    get: () => '20100101'
-                });
-                
-                Object.defineProperty(navigator, 'vendor', {
-                    get: () => ''
-                });
-                
-                Object.defineProperty(navigator, 'vendorSub', {
-                    get: () => ''
-                });
-            """
-            stealth_js += firefox_stealth_js
-        
-        await self.page.add_init_script(stealth_js)
+        """Setup additional stealth measures - comprehensive stealth is already applied"""
+        # The main stealth JavaScript is already applied from EnhancedStealth
+        # This method is kept for any additional page-specific stealth measures
+        pass
     
     async def _setup_network_logging(self):
         """Setup network request/response logging"""
@@ -572,10 +313,17 @@ class BaseBrowser:
     async def close(self):
         """Close the browser safely"""
         try:
-            if self.context:
-                await self.context.close()
-            if self.browser:
-                await self.browser.close()
+            if self.use_profile:
+                # For persistent context, close the context directly
+                if self.context:
+                    await self.context.close()
+            else:
+                # For regular browser, close context then browser
+                if self.context:
+                    await self.context.close()
+                if self.browser:
+                    await self.browser.close()
+            
             if self.playwright:
                 await self.playwright.stop()
                 print("Browser closed")
